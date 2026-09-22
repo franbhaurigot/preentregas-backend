@@ -12,6 +12,7 @@ export class EventDTO {
       id: toId(event),
       title: event.title,
       description: event.description ?? "",
+      category: event.category,
       date: event.date,
       location: event.location,
       price: event.price ?? 0,

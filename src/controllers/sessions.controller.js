@@ -1,36 +1,38 @@
-import { authService } from "../services/index.js";
-import { ok, created, asyncHandler } from "../utils/http.js";
+import { UserDTO } from "../dto/index.js";
+import { signToken } from "../utils/jwt.js";
+import { ok, created, message, asyncHandler } from "../utils/http.js";
 import { config } from "../config/config.js";
 
 /**
  * Los controllers solo coordinan request/response.
- * No importan modelos ni resuelven reglas de negocio.
+ * La validacion y la creacion/verificacion de usuario ya sucedieron
+ * en la estrategia de Passport antes de llegar aca (req.user).
  */
 const cookieOptions = {
   httpOnly: true,
   sameSite: "lax",
   secure: config.env === "production",
-  maxAge: 24 * 60 * 60 * 1000
+  maxAge: config.jwt.cookieMaxAge
 };
 
-export const register = asyncHandler(async (req, res) => {
-  const { user, token } = await authService.register(req.body);
-  res.cookie(config.jwt.cookieName, token, cookieOptions);
-  return created(res, { user, token });
-});
+/** POST /register: passport ya creo el usuario (estrategia "register"), solo se responde. */
+export const register = asyncHandler(async (req, res) => created(res, UserDTO.current(req.user)));
 
+/**
+ * POST /login: passport ya valido las credenciales (estrategia "login").
+ * El JWT se genera ACA, en el controller, nunca en la estrategia.
+ */
 export const login = asyncHandler(async (req, res) => {
-  const { user, token } = await authService.login(req.body);
+  const token = signToken({ id: req.user._id, email: req.user.email, role: req.user.role });
   res.cookie(config.jwt.cookieName, token, cookieOptions);
-  return ok(res, { user, token });
+  return message(res, "Login correcto");
 });
 
-export const current = asyncHandler(async (req, res) => {
-  const user = await authService.getCurrent(req.user._id ?? req.user.id);
-  return ok(res, { user });
-});
+/** GET /current: req.user ya viene resuelto por el middleware authenticate. */
+export const current = asyncHandler(async (req, res) => ok(res, UserDTO.session(req.user)));
 
+/** POST /logout: no pasa por Passport, solo limpia la cookie. */
 export const logout = asyncHandler(async (_req, res) => {
   res.clearCookie(config.jwt.cookieName, { ...cookieOptions, maxAge: undefined });
-  return ok(res, { message: "Sesion cerrada correctamente" });
+  return message(res, "Sesion cerrada");
 });

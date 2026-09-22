@@ -32,6 +32,23 @@ export class UserRepository {
   updatePassword(id, hashedPassword) {
     return this.dao.updateById(id, { password: hashedPassword });
   }
+
+  /**
+   * Cambia el rol de un usuario. Uso administrativo/interno unicamente
+   * (seed, panel de admin): el registro publico nunca llama a este metodo.
+   */
+  updateRole(id, role) {
+    return this.dao.updateById(id, { role });
+  }
+
+  /** Listado completo de usuarios. Reservado a rutas admin-only. */
+  findAll({ limit, skip } = {}) {
+    return this.dao.find({}, { limit, skip });
+  }
+
+  countAll() {
+    return this.dao.count({});
+  }
 }
 
 export const userRepository = new UserRepository();

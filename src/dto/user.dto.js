@@ -5,6 +5,7 @@ import { toId } from "./helpers.js";
  * ni campos internos como __v.
  */
 export class UserDTO {
+  /** Perfil completo (usado en register y en el listado de admin). */
   static current(user) {
     if (!user) return null;
     return {
@@ -16,6 +17,15 @@ export class UserDTO {
       age: user.age ?? null,
       role: user.role
     };
+  }
+
+  /**
+   * Forma minima pedida por la consigna para GET /api/sessions/current:
+   * solo { id, email, role }.
+   */
+  static session(user) {
+    if (!user) return null;
+    return { id: toId(user), email: user.email, role: user.role };
   }
 
   /** Version reducida para documentos relacionados (populate). */

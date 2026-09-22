@@ -34,16 +34,17 @@ export class TicketRepository {
     return this.dao.find(filter, { limit, skip, populate: FULL_POPULATE });
   }
 
-  findActiveTicketByUserAndEvent(userId, eventId) {
-    return this.dao.findOne({ user: userId, event: eventId, status: "active" });
+  findConfirmedTicketByUserAndEvent(userId, eventId) {
+    return this.dao.findOne({ user: userId, event: eventId, status: "confirmed" });
   }
 
-  countActiveTicketsByEvent(eventId) {
-    return this.dao.count({ event: eventId, status: "active" });
+  /** Suma la cantidad (quantity) de todos los tickets confirmados del evento: cupo ocupado real. */
+  sumConfirmedQuantityByEvent(eventId) {
+    return this.dao.sumQuantity({ event: eventId, status: "confirmed" });
   }
 
   cancelTicket(id) {
-    return this.dao.updateById(id, { status: "cancelled" }, { populate: FULL_POPULATE });
+    return this.dao.updateById(id, { status: "cancelled", cancelledAt: new Date() }, { populate: FULL_POPULATE });
   }
 }
 

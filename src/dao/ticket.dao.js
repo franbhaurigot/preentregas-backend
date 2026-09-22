@@ -1,4 +1,16 @@
+import mongoose from "mongoose";
 import { TicketModel } from "../models/ticket.model.js";
+
+/** aggregate() no castea strings a ObjectId como find(); hay que hacerlo a mano. */
+const castObjectIds = (filter, fields = ["user", "event"]) => {
+  const cast = { ...filter };
+  for (const field of fields) {
+    if (cast[field] && mongoose.isValidObjectId(cast[field])) {
+      cast[field] = new mongoose.Types.ObjectId(cast[field]);
+    }
+  }
+  return cast;
+};
 
 export class TicketDAO {
   create(data) {
@@ -35,6 +47,15 @@ export class TicketDAO {
 
   count(filter = {}) {
     return TicketModel.countDocuments(filter);
+  }
+
+  /** Suma el campo quantity de los documentos que matchean el filtro (para calcular cupos ocupados). */
+  async sumQuantity(filter = {}) {
+    const [result] = await TicketModel.aggregate([
+      { $match: castObjectIds(filter) },
+      { $group: { _id: null, total: { $sum: "$quantity" } } }
+    ]);
+    return result?.total ?? 0;
   }
 }
 

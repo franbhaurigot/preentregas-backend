@@ -1,27 +1,25 @@
-import jwt from "jsonwebtoken";
 import { userRepository } from "../repositories/index.js";
 import { UserDTO } from "../dto/index.js";
 import { hashPassword, comparePassword } from "../utils/hash.js";
 import { errors } from "../utils/errors.js";
 import { requireFields, isValidEmail } from "../utils/validate.js";
-import { config } from "../config/config.js";
 
 /**
- * Logica de negocio de autenticacion.
- * Habla solo con repositories y devuelve siempre DTOs.
+ * Logica de negocio de autenticacion. No conoce Express ni Passport:
+ * las estrategias de src/config/passport.config.js son solo un punto
+ * de entrada que llama a estos metodos y despues arma la respuesta.
  */
 export class AuthService {
   constructor(repository = userRepository) {
     this.users = repository;
   }
 
-  #buildToken(user) {
-    return jwt.sign({ sub: String(user._id), role: user.role }, config.jwt.secret, {
-      expiresIn: config.jwt.expiresIn
-    });
-  }
-
-  async register({ first_name, last_name, email, age, password, role }) {
+  /**
+   * Validacion, normalizacion, hash, unicidad y alta en base.
+   * El rol SIEMPRE es "user": el registro publico nunca permite
+   * elegir un rol distinto, ni siquiera si viene en el body.
+   */
+  async registerCore({ first_name, last_name, email, age, password }) {
     requireFields({ first_name, last_name, email, password }, [
       "first_name",
       "last_name",
@@ -36,9 +34,6 @@ export class AuthService {
     if (age !== undefined && age !== null && (Number.isNaN(Number(age)) || Number(age) < 0)) {
       throw errors.badRequest("La edad debe ser un numero valido");
     }
-    if (role && !["user", "organizer"].includes(role)) {
-      throw errors.badRequest("El rol solicitado no es valido");
-    }
 
     if (await this.users.existsByEmail(email)) {
       throw errors.conflict("Ya existe un usuario registrado con ese email");
@@ -50,29 +45,30 @@ export class AuthService {
       email,
       age: age !== undefined ? Number(age) : undefined,
       password: await hashPassword(password),
-      role: role ?? "user"
+      role: "user"
     });
 
-    return { user: UserDTO.current(created), token: this.#buildToken(created) };
+    return UserDTO.current(created);
   }
 
-  async login({ email, password }) {
-    requireFields({ email, password }, ["email", "password"]);
-
+  /**
+   * Compara credenciales. Devuelve el usuario (documento crudo, con hash)
+   * si son validas, o null si no. Nunca distingue "no existe el email"
+   * de "contrasena incorrecta": ambos casos devuelven null.
+   */
+  async validateCredentials(email, password) {
+    if (!email || !password) return null;
     const user = await this.users.findByEmail(email);
-    // Mismo mensaje para email inexistente o password incorrecta: no filtramos informacion.
-    if (!user) throw errors.unauthorized("Email o contrasena incorrectos");
-
+    if (!user) return null;
     const matches = await comparePassword(password, user.password);
-    if (!matches) throw errors.unauthorized("Email o contrasena incorrectos");
-
-    return { user: UserDTO.current(user), token: this.#buildToken(user) };
+    if (!matches) return null;
+    return user;
   }
 
-  async getCurrent(userId) {
+  async getById(userId) {
     const user = await this.users.findById(userId);
     if (!user) throw errors.notFound("Usuario no encontrado");
-    return UserDTO.current(user);
+    return user;
   }
 }
 

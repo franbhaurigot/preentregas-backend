@@ -7,10 +7,12 @@ export class TicketDTO {
     if (!ticket) return null;
     return {
       id: toId(ticket),
-      code: ticket.code,
+      reservationCode: ticket.reservationCode,
       status: ticket.status,
+      quantity: ticket.quantity,
       price: ticket.price,
-      purchase_datetime: ticket.purchase_datetime,
+      createdAt: ticket.createdAt,
+      cancelledAt: ticket.cancelledAt ?? null,
       // Si el usuario viene populado se filtra con el DTO: nunca sale el password.
       user: isPopulated(ticket.user)
         ? UserDTO.publicProfile(ticket.user)

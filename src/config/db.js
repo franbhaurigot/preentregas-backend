@@ -4,7 +4,7 @@ import { logger } from "../utils/logger.js";
 
 export const connectDB = async () => {
   mongoose.set("strictQuery", true);
-  await mongoose.connect(config.mongoUri);
+  await mongoose.connect(config.mongoUrl);
   logger.info("MongoDB conectado");
 };
 

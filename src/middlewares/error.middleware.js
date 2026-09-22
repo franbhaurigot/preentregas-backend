@@ -33,21 +33,20 @@ const normalize = (err) => {
   return new AppError("Error interno del servidor", { status: 500, code: "INTERNAL_ERROR" });
 };
 
-/** Middleware central de errores: unica salida de errores de la API. */
+/**
+ * Middleware central de errores: unica salida de errores de la API.
+ * Formato plano { status: "error", message }, consistente en toda la API
+ * y textual para los casos que la consigna pide literal
+ * (ej. "Credenciales invalidas", "No autenticado").
+ */
 export const errorHandler = (err, _req, res, _next) => {
   const error = normalize(err);
 
   if (error.status >= 500) logger.error(err?.stack || err?.message || String(err));
 
-  const body = {
-    status: "error",
-    error: {
-      code: error.code,
-      message: error.message
-    }
-  };
-  if (error.details) body.error.details = error.details;
-  if (config.env === "development" && error.status >= 500) body.error.stack = err?.stack;
+  const body = { status: "error", message: error.message };
+  if (error.details) body.details = error.details;
+  if (config.env === "development" && error.status >= 500) body.stack = err?.stack;
 
   res.status(error.status).json(body);
 };

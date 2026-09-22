@@ -1,56 +1,71 @@
 ### Variables
 @host = http://localhost:8080/api
 
-### 1. Registro (organizador)
+### 0. Health check
+GET {{host}}/health
+
+### 1. Registro (crea SIEMPRE con role "user", sin importar lo que mandes en el body)
 POST {{host}}/sessions/register
 Content-Type: application/json
 
-{ "first_name": "Laura", "last_name": "Gomez", "email": "laura@mail.com", "age": 33, "password": "123456", "role": "organizer" }
+{ "first_name": "Pedro", "last_name": "Suarez", "email": "pedro2@mail.com", "age": 25, "password": "123456" }
 
-### 2. Registro (asistente)
-POST {{host}}/sessions/register
-Content-Type: application/json
-
-{ "first_name": "Pedro", "last_name": "Suarez", "email": "pedro@mail.com", "age": 25, "password": "123456" }
-
-### 3. Login
+### 2. Login (setea la cookie currentUser)
 POST {{host}}/sessions/login
 Content-Type: application/json
 
 { "email": "pedro@mail.com", "password": "123456" }
 
-### 4. Usuario actual (no debe incluir password)
+### 3. Login con credenciales invalidas -> 401 "Credenciales invalidas"
+POST {{host}}/sessions/login
+Content-Type: application/json
+
+{ "email": "pedro@mail.com", "password": "incorrecta" }
+
+### 4. Usuario actual (solo {id, email, role}, sin password) -> requiere estar logueado como pedro
 GET {{host}}/sessions/current
 
-### 5. Crear evento (requiere rol organizer)
+### 5. Sin cookie -> 401 "No autenticado"
+GET {{host}}/sessions/current
+
+### 6. Logout
+POST {{host}}/sessions/logout
+
+### --- A partir de aca, logueate como laura@mail.com / 123456 (organizer) ---
+
+### 7. Crear evento (requiere rol organizer o admin)
 POST {{host}}/events
 Content-Type: application/json
 
-{ "title": "Node Day", "description": "Charlas de backend", "date": "2027-03-10T18:00:00.000Z", "location": "CABA", "capacity": 2, "price": 0 }
+{ "title": "Node Day", "description": "Charlas de backend", "category": "tecnologia", "date": "2027-03-10T18:00:00.000Z", "location": "CABA", "capacity": 2, "price": 0 }
 
-### 6. Publicar evento
-POST {{host}}/events/<EVENT_ID>/publish
-
-### 7. Listar eventos publicados
-GET {{host}}/events?limit=10&page=1
-
-### 8. Inscribirse
-POST {{host}}/events/<EVENT_ID>/inscriptions
-
-### 8b. Inscribirse (ruta alternativa)
-POST {{host}}/tickets
+### 8. Publicar evento (unico endpoint de cambio de estado)
+PATCH {{host}}/events/<EVENT_ID>/status
 Content-Type: application/json
 
-{ "eventId": "<EVENT_ID>" }
+{ "status": "published" }
 
-### 9. Mis tickets (populate sin password)
-GET {{host}}/tickets/mine
+### 9. Listar eventos publicados con filtros
+GET {{host}}/events?category=tecnologia&location=CABA&sort=-date&limit=10&page=1
 
-### 10. Cancelar inscripcion
-PUT {{host}}/tickets/<TICKET_ID>/cancel
+### --- A partir de aca, logueate como pedro@mail.com / 123456 (user) ---
 
-### 11. Inscriptos del evento (solo organizador)
+### 10. Inscribirse (ruta anidada pedida por la consigna)
+POST {{host}}/events/<EVENT_ID>/tickets
+Content-Type: application/json
+
+{ "quantity": 1 }
+
+### 11. Mis tickets (populate sin password)
+GET {{host}}/tickets/my-tickets
+
+### 12. Cancelar inscripcion (PATCH, no PUT)
+PATCH {{host}}/tickets/<TICKET_ID>/cancel
+
+### 13. Inscriptos del evento (solo organizador dueno o admin)
 GET {{host}}/events/<EVENT_ID>/tickets
 
-### 12. Logout
-POST {{host}}/sessions/logout
+### --- Ruta admin-only, logueate como admin@mail.com / 123456 ---
+
+### 14. Listado de usuarios (403 si no sos admin)
+GET {{host}}/users

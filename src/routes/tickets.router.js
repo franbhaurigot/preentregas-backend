@@ -9,9 +9,14 @@ import { authenticate } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
+// Ruta principal pedida por la consigna: POST /api/events/:eid/tickets (ver events.router.js).
+// Se deja tambien un alias plano por comodidad de pruebas manuales.
 router.post("/", authenticate, createInscription);
-router.get("/mine", authenticate, listMyTickets);
+
+router.get("/my-tickets", authenticate, listMyTickets);
+router.get("/mine", authenticate, listMyTickets); // alias retrocompatible
+
 router.get("/:tid", authenticate, getTicket);
-router.put("/:tid/cancel", authenticate, cancelTicket);
+router.patch("/:tid/cancel", authenticate, cancelTicket);
 
 export default router;
