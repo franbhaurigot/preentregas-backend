@@ -1,5 +1,13 @@
 # Plataforma de Eventos e Inscripciones
 
+## Temática
+
+Plataforma donde **organizadores** publican eventos (charlas, talleres, congresos) con cupo limitado y **usuarios** se inscriben a ellos. La API controla los cupos, evita inscripciones duplicadas, permite cancelar y avisa por email al confirmar.
+
+## Tecnologías
+
+Node.js 20+, Express, MongoDB + Mongoose, Passport.js (estrategias `local` y `jwt`), JWT (`jsonwebtoken`), bcrypt, cookie-parser, Nodemailer, dotenv. Módulos ESM.
+
 API REST en Node.js + Express + MongoDB para gestionar eventos, inscripciones y usuarios, construida en capas: **DAO → Repository → Service → Controller → DTO**, con autenticación centralizada en **Passport.js** (JWT en cookie httpOnly) y autorización por roles.
 
 ## Instalación
@@ -78,7 +86,7 @@ models/         esquemas de Mongoose
 `src/config/passport.config.js` centraliza **tres estrategias**, inicializadas en `app.js` (`passport.initialize()`) y nunca definidas ahí:
 
 - **`register`** (Local Strategy): recibe el body, llama a `AuthService.registerCore()` — que hace toda la validación, normalización, hash y alta — y deja el usuario creado en `req.user`. La ruta solo hace `passport.authenticate("register", ...)`.
-- **`login`** (Local Strategy): llama a `AuthService.validateCredentials()`. Si las credenciales no matchean, responde con el mensaje genérico `"Credenciales invalidas"` sin aclarar si falló el email o la contraseña. **El JWT se genera en el controller**, nunca en la estrategia.
+- **`login`** (Local Strategy): llama a `AuthService.validateCredentials()`. Si las credenciales no matchean, responde con el mensaje genérico `"Credenciales inválidas"` sin aclarar si falló el email o la contraseña. **El JWT se genera en el controller**, nunca en la estrategia.
 - **`current`** (JWT Strategy): lee el JWT desde la cookie `currentUser`, lo verifica y deja el usuario en `req.user`.
 
 Las estrategias son **adaptadores delgados**: la lógica real vive en los services (capa que ya exige la arquitectura del proyecto), así que agregar un provider externo (Google, GitHub) más adelante es agregar un `passport.use(new GoogleStrategy(...))` en este mismo archivo y una ruta nueva — sin tocar `app.js` ni el resto de las capas.
@@ -88,6 +96,21 @@ Las estrategias son **adaptadores delgados**: la lógica real vive en los servic
 - El JWT se firma y verifica en `src/utils/jwt.js` (único lugar), con payload `{ id, email, role }`.
 - Se guarda en una cookie llamada **`currentUser`**, con `httpOnly: true`, `sameSite: "lax"`, `maxAge: 3600000` (1 hora) y `secure: true` solo en producción.
 - `POST /api/sessions/logout` no pasa por Passport: solo limpia la cookie.
+
+## Flujo de autenticación
+
+1. `POST /api/sessions/register` → crea el usuario con rol `user` (la contraseña se guarda hasheada con bcrypt).
+2. `POST /api/sessions/login` → la estrategia `login` valida credenciales; el controller firma el JWT y lo guarda en la cookie httpOnly `currentUser`.
+3. Las rutas protegidas pasan por `authenticate` (estrategia `current`: lee la cookie, verifica el JWT y deja el usuario en `req.user`) → 401 si falla.
+4. `authorize(...roles)` compara `req.user.role` con los roles permitidos → 403 si no alcanza.
+5. `POST /api/sessions/logout` borra la cookie.
+
+## Flujo de inscripción
+
+1. El organizador crea el evento (`POST /api/events`, queda en `draft`) y lo publica (`PATCH /api/events/:eid/status` con `{ "status": "published" }`).
+2. Un usuario se inscribe con `POST /api/events/:eid/tickets` (opcional `{ "quantity": 2 }`). El service valida: evento existente y publicado, no finalizado, cupo suficiente (suma de `quantity` de tickets `confirmed`) y que no tenga ya un ticket `confirmed` para ese evento.
+3. Se crea el ticket (`confirmed`, con `reservationCode`) y se envía el email de confirmación.
+4. El usuario consulta `GET /api/tickets/my-tickets` y puede cancelar con `PATCH /api/tickets/:tid/cancel`: el ticket pasa a `cancelled` (con `cancelledAt`), no se borra, y el cupo queda libre.
 
 ## Roles y autorización
 
@@ -152,7 +175,7 @@ Un único middleware (`src/middlewares/error.middleware.js`) es la salida de tod
 ```
 Credenciales inválidas → `401`:
 ```json
-{ "status": "error", "message": "Credenciales invalidas" }
+{ "status": "error", "message": "Credenciales inválidas" }
 ```
 `GET /sessions/current` (con cookie) → `200`:
 ```json
@@ -186,7 +209,7 @@ El modelo `Event` no expone ningún endpoint de borrado físico: cancelar (`stat
 
 Respuesta de listado (`GET /events`):
 ```json
-{ "status": "success", "payload": { "data": [ /* eventos */ ], "page": 1, "limit": 20, "total": 2, "totalPages": 1 } }
+{ "status": "success", "data": [ /* eventos */ ], "page": 1, "limit": 20, "total": 2, "totalPages": 1 }
 ```
 
 ### Tickets — `/api/tickets`

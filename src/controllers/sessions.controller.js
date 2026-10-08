@@ -16,14 +16,15 @@ const cookieOptions = {
 };
 
 /** POST /register: passport ya creo el usuario (estrategia "register"), solo se responde. */
-export const register = asyncHandler(async (req, res) => created(res, UserDTO.current(req.user)));
+// registerCore ya devuelve el usuario pasado por UserDTO: no se vuelve a transformar.
+export const register = asyncHandler(async (req, res) => created(res, req.user));
 
 /**
  * POST /login: passport ya valido las credenciales (estrategia "login").
  * El JWT se genera ACA, en el controller, nunca en la estrategia.
  */
 export const login = asyncHandler(async (req, res) => {
-  const token = signToken({ id: req.user._id, email: req.user.email, role: req.user.role });
+  const token = signToken({ id: String(req.user._id), email: req.user.email, role: req.user.role });
   res.cookie(config.jwt.cookieName, token, cookieOptions);
   return message(res, "Login correcto");
 });
@@ -34,5 +35,5 @@ export const current = asyncHandler(async (req, res) => ok(res, UserDTO.session(
 /** POST /logout: no pasa por Passport, solo limpia la cookie. */
 export const logout = asyncHandler(async (_req, res) => {
   res.clearCookie(config.jwt.cookieName, { ...cookieOptions, maxAge: undefined });
-  return message(res, "Sesion cerrada");
+  return message(res, "Sesión cerrada");
 });

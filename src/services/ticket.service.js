@@ -61,7 +61,7 @@ export class TicketService {
     }
 
     const existing = await this.tickets.findConfirmedTicketByUserAndEvent(userId, id);
-    if (existing) throw errors.conflict("Ya estas inscripto en este evento");
+    if (existing) throw errors.conflict("Ya tenés una inscripción activa a este evento");
 
     const sold = await this.tickets.sumConfirmedQuantityByEvent(id);
     if (sold + requestedQuantity > event.capacity) {

@@ -1,12 +1,12 @@
 import { eventService } from "../services/index.js";
-import { ok, created, asyncHandler } from "../utils/http.js";
+import { ok, created, paginated, asyncHandler } from "../utils/http.js";
 
 export const listEvents = asyncHandler(async (req, res) =>
-  ok(res, await eventService.listPublished(req.query))
+  paginated(res, await eventService.listPublished(req.query))
 );
 
 export const listMyEvents = asyncHandler(async (req, res) =>
-  ok(res, await eventService.listMine(req.user, req.query))
+  paginated(res, await eventService.listMine(req.user, req.query))
 );
 
 export const getEvent = asyncHandler(async (req, res) =>
@@ -27,5 +27,5 @@ export const changeEventStatus = asyncHandler(async (req, res) =>
 );
 
 export const listEventAttendees = asyncHandler(async (req, res) =>
-  ok(res, await eventService.listAttendees(req.params.eid, req.user, req.query))
+  paginated(res, await eventService.listAttendees(req.params.eid, req.user, req.query))
 );

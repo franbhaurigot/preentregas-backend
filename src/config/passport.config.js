@@ -53,7 +53,7 @@ export const initializePassport = () => {
       async (email, password, done) => {
         try {
           const user = await authService.validateCredentials(email, password);
-          if (!user) return done(null, false, { message: "Credenciales invalidas" });
+          if (!user) return done(null, false, { message: "Credenciales inválidas" });
           return done(null, user);
         } catch (error) {
           return done(error);

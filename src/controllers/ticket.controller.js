@@ -1,5 +1,5 @@
 import { ticketService } from "../services/index.js";
-import { ok, created, asyncHandler } from "../utils/http.js";
+import { ok, created, paginated, asyncHandler } from "../utils/http.js";
 
 export const createInscription = asyncHandler(async (req, res) => {
   const eventId = req.params.eid ?? req.body.eventId;
@@ -7,7 +7,7 @@ export const createInscription = asyncHandler(async (req, res) => {
 });
 
 export const listMyTickets = asyncHandler(async (req, res) =>
-  ok(res, await ticketService.listMyTickets(req.user, req.query))
+  paginated(res, await ticketService.listMyTickets(req.user, req.query))
 );
 
 export const getTicket = asyncHandler(async (req, res) =>
